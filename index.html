@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Εκδρομές</title>
+<meta name="theme-color" content="#2e6a4d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Εκδρομές">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#f1f5f2; --surface:#ffffff; --ink:#15231b; --muted:#5a6c62; --line:#d6e0da;
+  --pine:#2e6a4d; --on-pine:#ffffff; --pine-soft:#e0ede5;
+  --due:#a9521f; --due-soft:#f8e8dc;
+  --font:"Commissioner",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1612; --surface:#17211b; --ink:#e4ede8; --muted:#94a69c; --line:#2a3830;
+  --pine:#72c197; --on-pine:#0c1a12; --pine-soft:#1e3328; --due:#eb9a66; --due-soft:#3a2519; color-scheme:dark}}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;
+  padding-inline:max(16px, env(safe-area-inset-left,0px));padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2{margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem;font-weight:800}
+h2{font-size:1.45rem;font-weight:800}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:600;background:var(--pine);color:var(--on-pine)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--due);border:1px solid var(--due)}
+.btn.danger.armed{background:var(--due);color:var(--surface)}
+.back{border:0;background:none;color:var(--pine);font-weight:600;padding:4px 0;align-self:flex-start}
+.link{border:0;background:none;color:var(--muted);font-size:.85rem;text-decoration:underline;padding:4px}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.field label{font-size:.82rem;color:var(--muted);font-weight:500}
+input,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0;font-size:16px}
+textarea{resize:vertical;min-height:46px}
+.row-fields{display:flex;gap:10px;flex-wrap:wrap}
+.row-fields .field.small{flex:0 0 110px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.new-ev{width:100%;border:1.5px dashed var(--pine);background:var(--pine-soft);color:var(--pine);border-radius:14px;padding:14px;font-weight:700;font-size:1rem;display:flex;align-items:center;justify-content:center;gap:8px}
+.new-ev span{font-size:1.3rem;line-height:1}
+
+.events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.ev{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.ev-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.ev-name{font-weight:700;font-size:1.08rem;min-width:0}
+.ev-sum{font-weight:700;white-space:nowrap}
+.bar{height:6px;border-radius:3px;background:var(--due-soft);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--pine);border-radius:3px}
+.ev-meta{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;color:var(--muted);flex-wrap:wrap}
+.ev-net{font-weight:600;color:var(--ink)}
+.empty{text-align:center;padding:32px 16px;color:var(--muted);border:1px dashed var(--line);border-radius:14px;display:flex;flex-direction:column;gap:12px;align-items:center}
+
+.summary{display:flex;flex-direction:column;gap:10px}
+.figs{display:flex;gap:24px;flex-wrap:wrap}
+.fig b{display:block;font-size:1.6rem;font-weight:800;line-height:1.1}
+.fig span{font-size:.85rem;color:var(--muted)}
+.fig.due b{color:var(--due)}
+.fig.ok b{color:var(--pine)}
+.fig.net.neg b{color:var(--due)}
+.breakdown{display:flex;gap:6px;flex-wrap:wrap;font-size:.85rem}
+.breakdown span{background:var(--pine-soft);border-radius:999px;padding:3px 10px}
+
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;font-weight:600;font-size:.9rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--pine-soft);color:var(--ink)}
+
+.people{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.person{padding:12px 14px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line)}
+.person:first-child{border-top:0}
+.p-top{display:flex;align-items:center;gap:10px}
+.idx{width:22px;text-align:right;color:var(--muted);font-size:.85rem;flex:none}
+.p-name{flex:1;min-width:0;border:0;background:none;text-align:left;padding:0;font-weight:600;overflow-wrap:anywhere}
+.p-amt{font-weight:600}
+.status{font-size:.76rem;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;letter-spacing:.02em}
+.status.paid{background:var(--pine-soft);color:var(--pine)}
+.status.due{background:var(--due-soft);color:var(--due)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;padding-left:32px}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:.86rem;font-weight:500;color:var(--muted)}
+.chip.on{background:var(--pine);border-color:var(--pine);color:var(--on-pine);font-weight:700}
+.edit{padding-left:32px;display:flex;flex-direction:column;gap:10px}
+
+.sec-title{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:8px}
+.sec-title h3{margin:0;font-size:1.15rem;font-weight:800}
+.exp-row{display:flex;align-items:center;gap:10px}
+.exp-row .p-name{font-weight:500}
+.x{border:0;background:none;color:var(--muted);font-size:.85rem;padding:4px 6px;border-radius:6px}
+.x.armed{color:var(--surface);background:var(--due);font-weight:700}
+
+.login{min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;text-align:center}
+.login img{width:88px;height:88px;border-radius:20px}
+.foot{display:flex;justify-content:center;gap:12px;color:var(--muted);font-size:.85rem;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;max-width:calc(100% - 32px);z-index:10}
+@media (prefers-reduced-motion:no-preference){.bar>i{transition:width .3s}.chip{transition:background .15s}}
+</style>
+</head>
+<body>
+
+<section id="loginScreen" class="wrap login" hidden>
+  <img src="icons/icon-192.png" alt="">
+  <h1>Εκδρομές</h1>
+  <p class="muted" id="loginMsg">Συνδέσου για να δεις τα events και τις πληρωμές.</p>
+  <button class="btn" id="loginBtn" type="button">Σύνδεση με Google</button>
+</section>
+
+<div id="appRoot" class="wrap" hidden>
+  <section id="listScreen">
+    <div class="wrap">
+      <h1>Εκδρομές</h1>
+      <button class="new-ev" id="newEventBtn" type="button"><span aria-hidden="true">+</span> Προσθήκη νέου event</button>
+      <form class="panel" id="newEventForm" hidden>
+        <div class="field"><label for="ne-name">Όνομα</label><input id="ne-name" required placeholder="π.χ. Εκδρομή στα βουνά"></div>
+        <div class="row-fields">
+          <div class="field"><label for="ne-date">Ημερομηνία</label><input id="ne-date" type="date"></div>
+          <div class="field small"><label for="ne-amt">Ποσό/άτομο €</label><input id="ne-amt" type="number" min="0" step="0.5" inputmode="decimal" value="20"></div>
+        </div>
+        <div class="actions"><button class="btn ghost" type="button" id="neCancel">Άκυρο</button><button class="btn" type="submit">Δημιουργία</button></div>
+      </form>
+      <ul class="events" id="eventsList"></ul>
+      <div class="foot"><span id="whoami"></span><button class="link" id="logoutBtn" type="button">Αποσύνδεση</button></div>
+    </div>
+  </section>
+
+  <section id="eventScreen" hidden>
+    <div class="wrap">
+      <button class="back" type="button" data-action="back">‹ Όλα τα events</button>
+      <div id="evHead"></div>
+      <form class="panel" id="addForm">
+        <div class="row-fields">
+          <div class="field"><label for="add-name">Συμμετέχων</label><textarea id="add-name" rows="1" placeholder="Όνομα (ή πολλά, ένα ανά γραμμή)"></textarea></div>
+          <div class="field small"><label for="add-amt">Ποσό €</label><input id="add-amt" type="number" min="0" step="0.5" inputmode="decimal"></div>
+        </div>
+        <div class="actions"><button class="btn" type="submit">Προσθήκη</button></div>
+      </form>
+      <div class="seg" id="seg">
+        <button type="button" data-filter="all" aria-pressed="true">Όλοι</button>
+        <button type="button" data-filter="due" aria-pressed="false">Εκκρεμούν</button>
+        <button type="button" data-filter="paid" aria-pressed="false">Πλήρωσαν</button>
+      </div>
+      <ul class="people" id="people"></ul>
+
+      <div class="sec-title"><h3>Έξοδα</h3><span class="muted num" id="expTotal"></span></div>
+      <form class="panel" id="expForm">
+        <div class="row-fields">
+          <div class="field"><label for="exp-desc">Περιγραφή</label><input id="exp-desc" placeholder="π.χ. Λεωφορείο, φαγητό, εισιτήρια"></div>
+          <div class="field small"><label for="exp-amt">Ποσό €</label><input id="exp-amt" type="number" min="0" step="0.01" inputmode="decimal"></div>
+        </div>
+        <div class="actions"><button class="btn" type="submit">Προσθήκη εξόδου</button></div>
+      </form>
+      <ul class="people" id="expList"></ul>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="seed.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

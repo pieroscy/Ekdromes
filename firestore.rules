@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Μόνο αυτοί οι λογαριασμοί Google διαβάζουν και γράφουν.
+    // Για να δώσεις πρόσβαση σε κάποιον άλλον, πρόσθεσε το email του εδώ ΚΑΙ στο public/firebase-config.js.
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['pieriscy@gmail.com'];
+    }
+    match /events/{id}    { allow read, write: if allowed(); }
+    match /attendees/{id} { allow read, write: if allowed(); }
+    match /expenses/{id}  { allow read, write: if allowed(); }
+  }
+}
