@@ -38,11 +38,18 @@ $("#loginBtn").addEventListener("click", async () => {
     if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) {
       await auth.signInWithRedirect(provider);
     } else if (e && e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
-      $("#loginMsg").textContent = "Η σύνδεση απέτυχε. Δοκίμασε ξανά.";
+      $("#loginMsg").textContent = loginError(e);
     }
   }
 });
-auth.getRedirectResult().catch(() => { $("#loginMsg").textContent = "Η σύνδεση απέτυχε. Δοκίμασε ξανά."; });
+auth.getRedirectResult().catch(e => { $("#loginMsg").textContent = loginError(e); });
+function loginError(e) {
+  const c = (e && e.code) || "unknown";
+  if (c === "auth/unauthorized-domain") return "Η σύνδεση απέτυχε: το " + location.hostname + " δεν είναι στα Authorized domains του Firebase. (" + c + ")";
+  if (c === "auth/operation-not-allowed") return "Η σύνδεση απέτυχε: το Google login δεν είναι ενεργό στο Firebase → Authentication. (" + c + ")";
+  if (c === "auth/network-request-failed") return "Η σύνδεση απέτυχε: δεν υπάρχει internet. (" + c + ")";
+  return "Η σύνδεση απέτυχε. Δοκίμασε ξανά. (" + c + ")";
+}
 $("#logoutBtn").addEventListener("click", () => auth.signOut());
 
 auth.onAuthStateChanged(user => {
@@ -59,7 +66,7 @@ auth.onAuthStateChanged(user => {
   $("#loginScreen").hidden = true; $("#appRoot").hidden = false;
   $("#whoami").textContent = user.email || "";
   S.evReady = false; render();
-  const fail = e => { console.error(e); toast(e.code === "permission-denied" ? "Ο λογαριασμός δεν έχει πρόσβαση στα δεδομένα." : "Πρόβλημα σύνδεσης με τη βάση."); };
+  const fail = e => { console.error(e); toast(e.code === "permission-denied" ? "Ο λογαριασμός " + (S.user && S.user.email) + " δεν έχει πρόσβαση στα δεδομένα. Έλεγξε τους κανόνες (Firestore → Rules)." : "Πρόβλημα σύνδεσης με τη βάση. (" + e.code + ")"); };
   unsubs.push(col("events").onSnapshot(s => { S.events = s.docs.map(d => ({ id: d.id, ...d.data() })); S.evReady = true; render(); }, fail));
   unsubs.push(col("attendees").onSnapshot(s => { S.att = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fail));
   unsubs.push(col("expenses").onSnapshot(s => { S.exp = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fail));
