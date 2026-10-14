@@ -8,6 +8,6 @@ window.FIREBASE_CONFIG = {
   appId: "1:105209608329:web:a84e2c3fae7d6010bfae58"
 };
 
-// Ποιοι λογαριασμοί Google μπορούν να μπουν στην εφαρμογή.
-// Πρέπει να ταιριάζει με τη λίστα στους κανόνες (Firestore → Rules).
-window.ALLOWED_EMAILS = ["pieriscy@gmail.com"];
+// Ο ιδιοκτήτης: έχει πάντα πρόσβαση και μόνο αυτός προσθέτει/αφαιρεί άτομα
+// (από την οθόνη «Πρόσβαση» μέσα στην εφαρμογή). Πρέπει να ταιριάζει με το firestore.rules.
+window.OWNER_EMAIL = "pieriscy@gmail.com";

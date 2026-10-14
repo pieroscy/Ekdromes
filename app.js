@@ -1,6 +1,6 @@
 /* Εκδρομές — app logic (Firebase Auth + Firestore) */
 const METHODS = ["Revolut", "Quickpay", "Μετρητά", "Άλλο"];
-const S = { events: [], att: [], exp: [], screen: "list", cur: null, filter: "all", editAtt: null, editEvent: false, confirm: null, evReady: false, user: null };
+const S = { events: [], att: [], exp: [], access: [], isOwner: false, screen: "list", cur: null, filter: "all", editAtt: null, editEvent: false, confirm: null, evReady: false, user: null };
 const unsubs = [];
 
 firebase.initializeApp(window.FIREBASE_CONFIG);
@@ -52,31 +52,48 @@ function loginError(e) {
 }
 $("#logoutBtn").addEventListener("click", () => auth.signOut());
 
-auth.onAuthStateChanged(user => {
+const OWNER = (window.OWNER_EMAIL || "").toLowerCase();
+const denyLogin = email => {
+  $("#loginMsg").textContent = `Ο λογαριασμός ${email} δεν έχει πρόσβαση. Ζήτα από τον διαχειριστή να σε προσθέσει ή συνδέσου με άλλον λογαριασμό.`;
+  auth.signOut();
+};
+
+auth.onAuthStateChanged(async user => {
   unsubs.splice(0).forEach(u => u());
-  S.user = user;
+  S.user = user; S.isOwner = false; S.access = [];
   if (!user) {
     $("#loginScreen").hidden = false; $("#appRoot").hidden = true; return;
   }
-  const allowed = (window.ALLOWED_EMAILS || []).map(e => e.toLowerCase());
-  if (allowed.length && !allowed.includes((user.email || "").toLowerCase())) {
-    $("#loginMsg").textContent = `Ο λογαριασμός ${user.email} δεν έχει πρόσβαση. Συνδέσου με άλλον λογαριασμό.`;
-    auth.signOut(); return;
+  const email = (user.email || "").toLowerCase();
+  S.isOwner = email === OWNER;
+  if (!S.isOwner) {
+    // Μέλος; Ελέγχεται η δική του εγγραφή στη λίστα πρόσβασης.
+    try {
+      const me = await col("access").doc(email).get();
+      if (!me.exists) { denyLogin(user.email); return; }
+    } catch (e) {
+      if (e && e.code === "permission-denied") { denyLogin(user.email); return; }
+      // offline: συνέχισε· η βάση θα αρνηθεί ούτως ή άλλως αν δεν έχει πρόσβαση
+    }
   }
   $("#loginScreen").hidden = true; $("#appRoot").hidden = false;
   $("#whoami").textContent = user.email || "";
-  S.evReady = false; render();
-  const fail = e => { console.error(e); toast(e.code === "permission-denied" ? "Ο λογαριασμός " + (S.user && S.user.email) + " δεν έχει πρόσβαση στα δεδομένα. Έλεγξε τους κανόνες (Firestore → Rules)." : "Πρόβλημα σύνδεσης με τη βάση. (" + e.code + ")"); };
+  $("#accessBtn").hidden = !S.isOwner;
+  S.evReady = false; if (S.screen === "access" && !S.isOwner) S.screen = "list"; render();
+  const fail = e => { console.error(e); toast(e.code === "permission-denied" ? "Ο λογαριασμός " + (S.user && S.user.email) + " δεν έχει πρόσβαση στα δεδομένα." : "Πρόβλημα σύνδεσης με τη βάση. (" + e.code + ")"); };
   unsubs.push(col("events").onSnapshot(s => { S.events = s.docs.map(d => ({ id: d.id, ...d.data() })); S.evReady = true; render(); }, fail));
   unsubs.push(col("attendees").onSnapshot(s => { S.att = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fail));
   unsubs.push(col("expenses").onSnapshot(s => { S.exp = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fail));
+  if (S.isOwner) unsubs.push(col("access").onSnapshot(s => { S.access = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); },
+    e => { console.error(e); S.accessError = e.code; render(); }));
 });
 
 /* ---------- Render ---------- */
 function render() {
   $("#listScreen").hidden = S.screen !== "list";
   $("#eventScreen").hidden = S.screen !== "event";
-  S.screen === "list" ? renderList() : renderEvent();
+  $("#accessScreen").hidden = S.screen !== "access";
+  S.screen === "list" ? renderList() : S.screen === "access" ? renderAccess() : renderEvent();
 }
 function renderList() {
   const ul = $("#eventsList");
@@ -97,6 +114,23 @@ function renderList() {
       ${s.xl.length ? `<div class="ev-meta num"><span>Έξοδα ${eur(s.spent)}</span><span class="ev-net">Καθαρό ${eur(s.net)}</span></div>` : ""}
     </button></li>`;
   }).join("");
+}
+function renderAccess() {
+  const ul = $("#accessList");
+  if (S.accessError === "permission-denied") {
+    ul.hidden = false;
+    ul.innerHTML = `<li class="person muted">Η λίστα δεν είναι ακόμα ενεργή. Επικόλλησε τους νέους κανόνες στο Firebase Console → Firestore → Rules και πάτα Publish.</li>`;
+    return;
+  }
+  const rows = [...S.access].sort((a, b) => (a.email || a.id).localeCompare(b.email || b.id));
+  ul.hidden = false;
+  ul.innerHTML = `<li class="person"><div class="exp-row"><span class="p-name">${esc(OWNER)}</span><span class="status paid">Διαχειριστής</span></div></li>` +
+    (rows.length ? rows.map(a => {
+      const armed = S.confirm === "acc:" + a.id;
+      const added = a.addedAt ? new Date(a.addedAt).toLocaleDateString("el-GR", { day: "numeric", month: "short", year: "numeric" }) : "";
+      return `<li class="person"><div class="exp-row"><span class="p-name">${esc(a.email || a.id)}${added ? `<br><span class="muted" style="font-weight:400;font-size:.82rem">από ${esc(added)}</span>` : ""}</span>
+        <button class="x ${armed ? "armed" : ""}" type="button" data-action="delAccess" data-id="${esc(a.id)}" aria-label="Αφαίρεση ${esc(a.email || a.id)}">${armed ? "Αφαίρεση;" : "✕"}</button></div></li>`;
+    }).join("") : `<li class="person muted">Δεν έχεις προσθέσει κανέναν ακόμα.</li>`);
 }
 function renderEvent() {
   const e = S.events.find(x => x.id === S.cur);
@@ -159,7 +193,13 @@ document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-action],[data-filter]"); if (!b) return;
   if (b.dataset.filter) { S.filter = b.dataset.filter; render(); return; }
   const act = b.dataset.action, id = b.dataset.id;
-  if (!["delAtt", "delEvent", "delExp"].includes(act)) S.confirm = null;
+  if (!["delAtt", "delEvent", "delExp", "delAccess"].includes(act)) S.confirm = null;
+  if (act === "openAccess") { if (!S.isOwner) return; S.screen = "access"; S.cur = null; render(); window.scrollTo(0, 0); return; }
+  if (act === "delAccess") {
+    if (!S.isOwner) return;
+    if (S.confirm !== "acc:" + id) { S.confirm = "acc:" + id; render(); return; }
+    S.confirm = null; safe(async () => { await col("access").doc(id).delete(); toast("Η πρόσβαση αφαιρέθηκε."); }); return;
+  }
 
   if (act === "open") { S.screen = "event"; S.cur = id; S.filter = "all"; S.editAtt = null; S.editEvent = false; $("#add-amt").value = ""; render(); window.scrollTo(0, 0); }
   else if (act === "back") { S.screen = "list"; S.cur = null; render(); }
@@ -229,6 +269,18 @@ $("#addForm").addEventListener("submit", async ev => {
   $("#add-name").value = ""; let order = Date.now(); const batch = fs.batch();
   names.forEach(name => batch.set(col("attendees").doc(), { eventId: S.cur, name, amount, paid: false, method: null, paidAt: null, order: order++ }));
   safe(() => batch.commit());
+});
+$("#accessForm").addEventListener("submit", async ev => {
+  ev.preventDefault(); if (!S.isOwner) return;
+  const email = $("#acc-email").value.trim().toLowerCase();
+  if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(email)) { toast("Γράψε ένα σωστό email."); return; }
+  if (email === OWNER) { toast("Αυτός είναι ο δικός σου λογαριασμός."); return; }
+  if (S.access.some(a => a.id === email)) { toast("Αυτό το email έχει ήδη πρόσβαση."); return; }
+  $("#acc-email").value = "";
+  safe(async () => {
+    await col("access").doc(email).set({ email, addedAt: new Date().toISOString(), addedBy: OWNER });
+    toast("Προστέθηκε: " + email);
+  }, "Η προσθήκη απέτυχε. Έχεις επικολλήσει τους νέους κανόνες στο Firebase;");
 });
 $("#expForm").addEventListener("submit", async ev => {
   ev.preventDefault(); if (!S.cur) return;

@@ -7,7 +7,7 @@
 - **Δεδομένα & login:** Firebase project `ekdromes-d9c0c`, δωρεάν πλάνο Spark (μην κάνεις ποτέ upgrade σε Blaze)
 
 ## Πρόσβαση σε άλλο άτομο
-Πρόσθεσε το email του στο `firebase-config.js` (`ALLOWED_EMAILS`) και στους κανόνες στο Firebase Console → Firestore → Rules (αντίγραφό τους στο `firestore.rules`).
+Από την εφαρμογή: κάτω στη σελίδα → **Πρόσβαση** (το βλέπει μόνο ο διαχειριστής) → γράφεις το Gmail του → **Προσθήκη**. Ο διαχειριστής ορίζεται στο `firebase-config.js` (`OWNER_EMAIL`) και στο `firestore.rules`.
 
 ## Ενημέρωση
 Μετά από αλλαγές, άλλαξε το `VERSION` στο `sw.js` ώστε τα κινητά να πάρουν τη νέα έκδοση.

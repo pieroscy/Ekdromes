@@ -139,7 +139,22 @@ textarea{resize:vertical;min-height:46px}
         <div class="actions"><button class="btn ghost" type="button" id="neCancel">Άκυρο</button><button class="btn" type="submit">Δημιουργία</button></div>
       </form>
       <ul class="events" id="eventsList"></ul>
-      <div class="foot"><span id="whoami"></span><button class="link" id="logoutBtn" type="button">Αποσύνδεση</button></div>
+      <div class="foot"><span id="whoami"></span><button class="link" id="accessBtn" type="button" data-action="openAccess" hidden>Πρόσβαση</button><button class="link" id="logoutBtn" type="button">Αποσύνδεση</button></div>
+    </div>
+  </section>
+
+  <section id="accessScreen" hidden>
+    <div class="wrap">
+      <button class="back" type="button" data-action="back">‹ Όλα τα events</button>
+      <div>
+        <h2>Πρόσβαση</h2>
+        <p class="muted">Όσοι είναι στη λίστα μπορούν να συνδεθούν με τον λογαριασμό Google τους, να βλέπουν και να αλλάζουν events, πληρωμές και έξοδα. Μόνο εσύ προσθέτεις και αφαιρείς άτομα.</p>
+      </div>
+      <form class="panel" id="accessForm">
+        <div class="field"><label for="acc-email">Email λογαριασμού Google</label><input id="acc-email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. onoma@gmail.com"></div>
+        <div class="actions"><button class="btn" type="submit">Προσθήκη</button></div>
+      </form>
+      <ul class="people" id="accessList"></ul>
     </div>
   </section>
 
