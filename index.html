@@ -62,7 +62,15 @@ textarea{resize:vertical;min-height:46px}
 .new-ev span{font-size:1.3rem;line-height:1}
 
 .events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
-.ev{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.ev-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.ev{width:100%;text-align:left;background:none;border:0;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.ev-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 16px 14px;flex-wrap:wrap}
+.ev-foot .breakdown{flex:1;min-width:0}
+.badge{border:0;font-size:.82rem;font-weight:700;border-radius:999px;padding:6px 12px;white-space:nowrap;margin-left:auto}
+.badge.due{background:var(--due-soft);color:var(--due)}
+.badge.paid{background:var(--pine-soft);color:var(--pine)}
+.nodate{font-style:italic}
+.add-date{border:0;background:none;padding:0;color:var(--pine);font-weight:600;text-decoration:underline}
 .ev-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
 .ev-name{font-weight:700;font-size:1.08rem;min-width:0}
 .ev-sum{font-weight:700;white-space:nowrap}
@@ -70,11 +78,12 @@ textarea{resize:vertical;min-height:46px}
 .bar>i{display:block;height:100%;background:var(--pine);border-radius:3px}
 .ev-meta{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;color:var(--muted);flex-wrap:wrap}
 .ev-net{font-weight:600;color:var(--ink)}
+.ev-net.neg{color:var(--due)}
 .empty{text-align:center;padding:32px 16px;color:var(--muted);border:1px dashed var(--line);border-radius:14px;display:flex;flex-direction:column;gap:12px;align-items:center}
 
 .summary{display:flex;flex-direction:column;gap:10px}
-.figs{display:flex;gap:24px;flex-wrap:wrap}
-.fig b{display:block;font-size:1.6rem;font-weight:800;line-height:1.1}
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 12px}
+.fig b{display:block;font-size:clamp(1.15rem,5.2vw,1.6rem);font-weight:800;line-height:1.1}
 .fig span{font-size:.85rem;color:var(--muted)}
 .fig.due b{color:var(--due)}
 .fig.ok b{color:var(--pine)}
@@ -110,7 +119,10 @@ textarea{resize:vertical;min-height:46px}
 
 .login{min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;text-align:center}
 .login img{width:88px;height:88px;border-radius:20px}
-.foot{display:flex;justify-content:center;gap:12px;color:var(--muted);font-size:.85rem;flex-wrap:wrap}
+.foot{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:.85rem;margin-top:auto;padding-top:16px;border-top:1px solid var(--line)}
+.foot #whoami{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.foot .link{white-space:nowrap}
+#listScreen,#listScreen>.wrap{min-height:calc(100dvh - 68px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;max-width:calc(100% - 32px);z-index:10}
 @media (prefers-reduced-motion:no-preference){.bar>i{transition:width .3s}.chip{transition:background .15s}}
@@ -121,7 +133,7 @@ textarea{resize:vertical;min-height:46px}
 <section id="loginScreen" class="wrap login" hidden>
   <img src="icons/icon-192.png" alt="">
   <h1>Εκδρομές</h1>
-  <p class="muted" id="loginMsg">Συνδέσου για να δεις τα events και τις πληρωμές.</p>
+  <p class="muted" id="loginMsg">Συνδέσου για να δεις τις εκδρομές και τις πληρωμές.</p>
   <button class="btn" id="loginBtn" type="button">Σύνδεση με Google</button>
 </section>
 
@@ -129,7 +141,7 @@ textarea{resize:vertical;min-height:46px}
   <section id="listScreen">
     <div class="wrap">
       <h1>Εκδρομές</h1>
-      <button class="new-ev" id="newEventBtn" type="button"><span aria-hidden="true">+</span> Προσθήκη νέου event</button>
+      <button class="new-ev" id="newEventBtn" type="button"><span aria-hidden="true">+</span> Νέα εκδρομή</button>
       <form class="panel" id="newEventForm" hidden>
         <div class="field"><label for="ne-name">Όνομα</label><input id="ne-name" required placeholder="π.χ. Εκδρομή στα βουνά"></div>
         <div class="row-fields">
@@ -145,10 +157,10 @@ textarea{resize:vertical;min-height:46px}
 
   <section id="accessScreen" hidden>
     <div class="wrap">
-      <button class="back" type="button" data-action="back">‹ Όλα τα events</button>
+      <button class="back" type="button" data-action="back">‹ Όλες οι εκδρομές</button>
       <div>
         <h2>Πρόσβαση</h2>
-        <p class="muted">Όσοι είναι στη λίστα μπορούν να συνδεθούν με τον λογαριασμό Google τους, να βλέπουν και να αλλάζουν events, πληρωμές και έξοδα. Μόνο εσύ προσθέτεις και αφαιρείς άτομα.</p>
+        <p class="muted">Όσοι είναι στη λίστα μπορούν να συνδεθούν με τον λογαριασμό Google τους, να βλέπουν και να αλλάζουν εκδρομές, πληρωμές και έξοδα. Μόνο εσύ προσθέτεις και αφαιρείς άτομα.</p>
       </div>
       <form class="panel" id="accessForm">
         <div class="field"><label for="acc-email">Email λογαριασμού Google</label><input id="acc-email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="π.χ. onoma@gmail.com"></div>
@@ -160,7 +172,7 @@ textarea{resize:vertical;min-height:46px}
 
   <section id="eventScreen" hidden>
     <div class="wrap">
-      <button class="back" type="button" data-action="back">‹ Όλα τα events</button>
+      <button class="back" type="button" data-action="back">‹ Όλες οι εκδρομές</button>
       <div id="evHead"></div>
       <form class="panel" id="addForm">
         <div class="row-fields">

@@ -1,6 +1,6 @@
 // Service worker: κρατάει τα αρχεία της εφαρμογής για γρήγορο άνοιγμα και offline.
 // Άλλαξε το VERSION όταν ανεβάζεις νέα έκδοση.
-const VERSION = "ekdromes-v3";
+const VERSION = "ekdromes-v4";
 const SHELL = ["./", "index.html", "app.js", "firebase-config.js", "seed.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 

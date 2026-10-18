@@ -13,6 +13,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const eur = n => "€" + (Math.round((+n || 0) * 100) / 100).toLocaleString("el-GR", { maximumFractionDigits: 2 });
 const fmtDate = d => { if (!d) return ""; const [y, m, dd] = d.split("-").map(Number); if (!y) return ""; return new Date(y, m - 1, dd).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "long", year: "numeric" }); };
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const peopleLabel = n => n === 1 ? "1 άτομο" : `${n} άτομα`;
 const attOf = id => S.att.filter(a => a.eventId === id).sort((a, b) => (a.order || 0) - (b.order || 0));
 const expOf = id => S.exp.filter(x => x.eventId === id).sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
 function stats(id) {
@@ -100,19 +102,31 @@ function renderList() {
   if (!S.evReady) { ul.innerHTML = `<li class="empty">Φόρτωση…</li>`; return; }
   if (!S.events.length) {
     const seed = window.SEED && window.SEED.events && window.SEED.events.length;
-    ul.innerHTML = `<li class="empty"><span>Δεν υπάρχουν events ακόμα. Πάτα «Προσθήκη νέου event» για να φτιάξεις το πρώτο.</span>
+    ul.innerHTML = `<li class="empty"><span>Δεν υπάρχουν εκδρομές ακόμα. Πάτα «Νέα εκδρομή» για να φτιάξεις την πρώτη.</span>
       ${seed ? `<button class="btn ghost" type="button" data-action="importSeed">Εισαγωγή δεδομένων από την προηγούμενη έκδοση</button>` : ""}</li>`;
     return;
   }
-  const evs = [...S.events].sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  // Ταξινόμηση: επερχόμενες (η πιο κοντινή πρώτη), μετά οι περασμένες (η πιο πρόσφατη πρώτη), στο τέλος όσες δεν έχουν ημερομηνία.
+  const today = todayISO();
+  const rank = e => !e.date ? 2 : e.date >= today ? 0 : 1;
+  const evs = [...S.events].sort((a, b) => rank(a) - rank(b)
+    || (rank(a) === 0 ? a.date.localeCompare(b.date) : (b.date || "").localeCompare(a.date || ""))
+    || (b.createdAt || "").localeCompare(a.createdAt || ""));
   ul.innerHTML = evs.map(e => {
-    const s = stats(e.id); const pct = s.exp ? Math.round(s.got / s.exp * 100) : 0;
-    return `<li><button class="ev" type="button" data-action="open" data-id="${e.id}">
+    const s = stats(e.id); const pct = s.exp ? Math.round(s.got / s.exp * 100) : 0; const due = s.l.length - s.n;
+    const date = fmtDate(e.date);
+    return `<li class="ev-card"><button class="ev" type="button" data-action="open" data-id="${e.id}">
       <div class="ev-head"><span class="ev-name">${esc(e.name)}</span><span class="ev-sum num">${eur(s.got)} <span class="muted">/ ${eur(s.exp)}</span></span></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
-      <div class="ev-meta"><span>${esc(fmtDate(e.date)) || "Χωρίς ημερομηνία"}</span><span class="num">${s.n}/${s.l.length} πλήρωσαν</span></div>
-      ${s.xl.length ? `<div class="ev-meta num"><span>Έξοδα ${eur(s.spent)}</span><span class="ev-net">Καθαρό ${eur(s.net)}</span></div>` : ""}
-    </button></li>`;
+      <div class="ev-meta"><span class="${date ? "" : "nodate"}">${esc(date) || "Χωρίς ημερομηνία"}</span><span class="num">${peopleLabel(s.l.length)} · ${s.n} πλήρωσαν</span></div>
+      <div class="ev-meta num"><span>Έξοδα ${eur(s.spent)}</span><span class="ev-net ${s.net < 0 ? "neg" : ""}">Καθαρό ${eur(s.net)}</span></div>
+    </button>
+    ${s.l.length ? `<div class="ev-foot">
+      <div class="breakdown">${Object.entries(s.by).map(([m, v]) => `<span class="num">${esc(m)} ${eur(v)}</span>`).join("")}</div>
+      ${due ? `<button class="badge due num" type="button" data-action="openDue" data-id="${e.id}">${due} ${due === 1 ? "εκκρεμεί" : "εκκρεμούν"} ›</button>`
+            : `<span class="badge paid">Όλοι πλήρωσαν</span>`}
+    </div>` : ""}
+    </li>`;
   }).join("");
 }
 function renderAccess() {
@@ -138,20 +152,21 @@ function renderEvent() {
   const s = stats(e.id); const pct = s.exp ? Math.round(s.got / s.exp * 100) : 0;
   const amtIn = $("#add-amt"); if (!amtIn.value && document.activeElement !== amtIn) amtIn.value = e.amount ?? "";
   let head = `<div class="panel summary">
-    <div class="top"><div><h2>${esc(e.name)}</h2><div class="muted">${esc(fmtDate(e.date)) || "Χωρίς ημερομηνία"}, ${eur(e.amount)} ανά άτομο</div></div>
+    <div class="top"><div><h2>${esc(e.name)}</h2><div class="muted">${e.date ? esc(fmtDate(e.date)) : (S.editEvent ? "Χωρίς ημερομηνία" : `<button class="add-date" type="button" data-action="toggleEditEvent">+ Πρόσθεσε ημερομηνία</button>`)} · ${eur(e.amount)} ανά άτομο · ${peopleLabel(s.l.length)}</div></div>
     <button class="btn ghost" type="button" data-action="toggleEditEvent">${S.editEvent ? "Κλείσιμο" : "Επεξεργασία"}</button></div>`;
   if (S.editEvent) {
     const armed = S.confirm === "ev";
     head += `<div class="field"><label for="ee-name">Όνομα</label><input id="ee-name" value="${esc(e.name)}"></div>
     <div class="row-fields"><div class="field"><label for="ee-date">Ημερομηνία</label><input id="ee-date" type="date" value="${esc(e.date || "")}"></div>
     <div class="field small"><label for="ee-amt">Ποσό/άτομο €</label><input id="ee-amt" type="number" min="0" step="0.5" value="${esc(e.amount ?? "")}"></div></div>
-    <div class="actions"><button class="btn danger ${armed ? "armed" : ""}" type="button" data-action="delEvent">${armed ? "Σίγουρα; Διαγραφή event" : "Διαγραφή event"}</button><button class="btn" type="button" data-action="saveEvent">Αποθήκευση</button></div>`;
+    <div class="actions"><button class="btn danger ${armed ? "armed" : ""}" type="button" data-action="delEvent">${armed ? "Σίγουρα; Διαγραφή εκδρομής" : "Διαγραφή εκδρομής"}</button><button class="btn" type="button" data-action="saveEvent">Αποθήκευση</button></div>`;
   }
   head += `<div class="figs"><div class="fig ok"><b class="num">${eur(s.got)}</b><span>εισπράχθηκαν</span></div>
     <div class="fig due"><b class="num">${eur(s.exp - s.got)}</b><span>εκκρεμούν</span></div>
-    <div class="fig"><b class="num">${s.n}/${s.l.length}</b><span>πλήρωσαν</span></div></div>
-    <div class="figs"><div class="fig"><b class="num">${eur(s.spent)}</b><span>έξοδα</span></div>
-    <div class="fig net ${s.net < 0 ? "neg" : ""}"><b class="num">${eur(s.net)}</b><span>καθαρό (εισπράξεις − έξοδα)</span></div></div>
+    <div class="fig"><b class="num">${s.n}/${s.l.length}</b><span>πλήρωσαν</span></div>
+    <div class="fig"><b class="num">${s.l.length}</b><span>συμμετέχοντες</span></div>
+    <div class="fig"><b class="num">${eur(s.spent)}</b><span>έξοδα</span></div>
+    <div class="fig net ${s.net < 0 ? "neg" : ""}"><b class="num">${eur(s.net)}</b><span>καθαρό</span></div></div>
     <div class="bar"><i style="width:${pct}%"></i></div>
     ${Object.keys(s.by).length ? `<div class="breakdown">${Object.entries(s.by).map(([m, v]) => `<span class="num">${esc(m)} ${eur(v)}</span>`).join("")}</div>` : ""}
   </div>`;
@@ -201,7 +216,7 @@ document.addEventListener("click", async ev => {
     S.confirm = null; safe(async () => { await col("access").doc(id).delete(); toast("Η πρόσβαση αφαιρέθηκε."); }); return;
   }
 
-  if (act === "open") { S.screen = "event"; S.cur = id; S.filter = "all"; S.editAtt = null; S.editEvent = false; $("#add-amt").value = ""; render(); window.scrollTo(0, 0); }
+  if (act === "open" || act === "openDue") { S.screen = "event"; S.cur = id; S.filter = act === "openDue" ? "due" : "all"; S.editAtt = null; S.editEvent = false; $("#add-amt").value = ""; render(); window.scrollTo(0, 0); }
   else if (act === "back") { S.screen = "list"; S.cur = null; render(); }
   else if (act === "pay") {
     const a = S.att.find(x => x.id === id); if (!a) return; const m = b.dataset.m;
@@ -235,7 +250,7 @@ document.addEventListener("click", async ev => {
     expOf(eid).forEach(x => batch.delete(col("expenses").doc(x.id)));
     batch.delete(col("events").doc(eid));
     S.confirm = null; S.screen = "list"; S.cur = null; render();
-    safe(async () => { await batch.commit(); toast("Το event διαγράφηκε."); });
+    safe(async () => { await batch.commit(); toast("Η εκδρομή διαγράφηκε."); });
   }
   else if (act === "importSeed") {
     const seed = window.SEED; const batch = fs.batch();
