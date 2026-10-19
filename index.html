@@ -51,7 +51,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
-.field label{font-size:.82rem;color:var(--muted);font-weight:500}
+.field .lbl,.field label{font-size:.82rem;color:var(--muted);font-weight:500}
 input,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0;font-size:16px}
 textarea{resize:vertical;min-height:46px}
 .row-fields{display:flex;gap:10px;flex-wrap:wrap}
@@ -107,6 +107,9 @@ textarea{resize:vertical;min-height:46px}
 .status.due{background:var(--due-soft);color:var(--due)}
 .chips{display:flex;gap:6px;flex-wrap:wrap;padding-left:32px}
 .chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:.86rem;font-weight:500;color:var(--muted)}
+.chips.pick{padding-left:0}
+.chip.pend.on{background:var(--due);border-color:var(--due);color:var(--surface)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .chip.on{background:var(--pine);border-color:var(--pine);color:var(--on-pine);font-weight:700}
 .edit{padding-left:32px;display:flex;flex-direction:column;gap:10px}
 
@@ -179,7 +182,9 @@ textarea{resize:vertical;min-height:46px}
           <div class="field"><label for="add-name">Συμμετέχων</label><textarea id="add-name" rows="1" placeholder="Όνομα (ή πολλά, ένα ανά γραμμή)"></textarea></div>
           <div class="field small"><label for="add-amt">Ποσό €</label><input id="add-amt" type="number" min="0" step="0.5" inputmode="decimal"></div>
         </div>
-        <div class="actions"><button class="btn" type="submit">Προσθήκη</button></div>
+        <div class="field"><span class="lbl" id="add-m-lbl">Τρόπος πληρωμής</span>
+          <div class="chips pick" id="add-method" role="radiogroup" aria-labelledby="add-m-lbl"></div></div>
+        <div class="actions"><button class="btn" type="submit" id="addSubmit" disabled>Προσθήκη</button></div>
       </form>
       <div class="seg" id="seg">
         <button type="button" data-filter="all" aria-pressed="true">Όλοι</button>

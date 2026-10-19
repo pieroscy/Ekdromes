@@ -274,15 +274,33 @@ $("#newEventForm").addEventListener("submit", async ev => {
   S.events = [...S.events, { id: ref.id, ...data }]; render();
   safe(() => ref.set(data));
 });
+/* Τρόπος πληρωμής νέου συμμετέχοντα: υποχρεωτική επιλογή πριν την προσθήκη. */
+const PEND = "__pending";
+let addMethod = null;
+function renderAddMethod() {
+  $("#add-method").innerHTML = [...METHODS, PEND].map(m => {
+    const on = addMethod === m, label = m === PEND ? "Δεν πλήρωσε ακόμα" : m;
+    return `<button class="chip ${m === PEND ? "pend" : ""} ${on ? "on" : ""}" type="button" role="radio" aria-checked="${on}" data-m="${esc(m)}">${esc(label)}</button>`;
+  }).join("");
+  $("#addSubmit").disabled = !addMethod;
+}
+$("#add-method").addEventListener("click", ev => {
+  const c = ev.target.closest("[data-m]"); if (!c) return;
+  addMethod = addMethod === c.dataset.m ? null : c.dataset.m; renderAddMethod();
+});
+renderAddMethod();
 $("#add-name").addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey && !ev.target.value.includes("\n")) { ev.preventDefault(); $("#addForm").requestSubmit(); } });
 $("#addForm").addEventListener("submit", async ev => {
   ev.preventDefault(); if (!S.cur) return;
   const names = $("#add-name").value.split("\n").map(s => s.trim()).filter(Boolean);
   if (!names.length) { toast("Γράψε ένα όνομα."); return; }
+  if (!addMethod) { toast("Διάλεξε τρόπο πληρωμής."); return; }
+  const paid = addMethod !== PEND, method = paid ? addMethod : null, paidAt = paid ? new Date().toISOString() : null;
   const e = S.events.find(x => x.id === S.cur); const v = $("#add-amt").value;
   const amount = v === "" ? (+e.amount || 0) : (parseFloat(v) || 0);
   $("#add-name").value = ""; let order = Date.now(); const batch = fs.batch();
-  names.forEach(name => batch.set(col("attendees").doc(), { eventId: S.cur, name, amount, paid: false, method: null, paidAt: null, order: order++ }));
+  names.forEach(name => batch.set(col("attendees").doc(), { eventId: S.cur, name, amount, paid, method, paidAt, order: order++ }));
+  addMethod = null; renderAddMethod();
   safe(() => batch.commit());
 });
 $("#accessForm").addEventListener("submit", async ev => {
